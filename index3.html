@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otomobil Galerisi</title>
+<style>
+  /* Açık tema değişkenleri */
+  :root {
+    --zemin: #eceff2; --kart: #fff; --yazi: #1a2530; --soluk: #5b6773;
+    --cizgi: #d3d9df; --vurgu: #1d5b86; --girdi: #fff; --kalp: #c0392b;
+    --bosluk: clamp(14px, 3vw, 28px);
+    color-scheme: light;
+  }
+  :root[data-tema="koyu"] {
+    --zemin: #12181f; --kart: #1b242d; --yazi: #e6ebf0; --soluk: #9aa7b3;
+    --cizgi: #2f3b47; --vurgu: #6db3e3; --girdi: #222d38; --kalp: #ff6b5b;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--zemin); color: var(--yazi);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; line-height: 1.5; }
+  .kapsayici { max-width: 1120px; margin: 0 auto; padding: var(--bosluk); padding-bottom: 90px; }
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  header h1 { font-size: clamp(1.8rem, 5vw, 2.8rem); margin: 0 0 4px; letter-spacing: -0.02em; }
+  header p { margin: 0 0 var(--bosluk); color: var(--soluk); }
+
+  button, input, select { font: inherit; color: var(--yazi); }
+  input[type="search"], input[type="number"], select {
+    padding: 10px 12px; width: 100%; border: 1px solid var(--cizgi);
+    border-radius: 8px; background: var(--girdi); }
+  .dugme { padding: 9px 14px; border: 1px solid var(--cizgi); border-radius: 8px;
+    background: var(--kart); cursor: pointer; }
+  .dugme:hover:not(:disabled) { border-color: var(--vurgu); }
+  .dugme:disabled { opacity: .45; cursor: not-allowed; }
+  :is(input, select, button, summary):focus-visible { outline: 3px solid var(--vurgu); outline-offset: 1px; }
+
+  /* Filtre çubuğu */
+  .arac-cubugu { display: grid; gap: 12px; padding: 14px; background: var(--kart);
+    border: 1px solid var(--cizgi); border-radius: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); position: sticky; top: 0; z-index: 5; }
+  .alan { display: flex; flex-direction: column; gap: 4px; }
+  .alan label { font-size: .85rem; color: var(--soluk); }
+  .alan input[type="range"] { width: 100%; accent-color: var(--vurgu); }
+  .satir { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sonuc-sayisi { margin: 14px 2px; color: var(--soluk); }
+
+  /* Kartlar */
+  .izgara { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); }
+  .kart { background: var(--kart); border: 1px solid var(--cizgi); border-radius: 10px;
+    overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .gorsel { display: grid; place-items: center; padding: 18px 12px 6px; }
+  .gorsel svg { width: 100%; max-width: 220px; height: auto; }
+  .gorsel.foto-alani { padding: 0; }
+  .gorsel img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+  .bilgi { padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .bilgi h2 { margin: 0; font-size: 1.15rem; }
+  .bilgi h2 span { font-weight: 400; color: var(--soluk); }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: .95rem; }
+  dt { color: var(--soluk); } dd { margin: 0; text-align: right; }
+  .fiyat { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--cizgi);
+    font-size: 1.3rem; font-weight: 700; color: var(--vurgu); }
+  .kalp { position: absolute; top: 8px; right: 8px; width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid var(--cizgi); background: var(--kart); cursor: pointer; font-size: 1.2rem; color: var(--soluk); }
+  .kalp[aria-pressed="true"] { color: var(--kalp); border-color: var(--kalp); }
+  .kart-alt { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+  .kart-alt label { display: flex; align-items: center; gap: 6px; font-size: .9rem; color: var(--soluk); cursor: pointer; }
+  .bos { text-align: center; padding: 40px 10px; color: var(--soluk); }
+  [hidden] { display: none !important; }
+
+  /* Sayfalama */
+  .sayfalama { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .sayfalama .dugme[aria-current="page"] { background: var(--vurgu); border-color: var(--vurgu); color: var(--kart); font-weight: 700; }
+
+  /* Karşılaştırma çubuğu (ekranın altında sabit) */
+  .karsilastirma-cubugu { position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
+    background: var(--kart); border-top: 1px solid var(--cizgi); padding: 10px var(--bosluk);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
+  .karsilastirma-cubugu p { margin: 0; }
+
+  /* Pencereler */
+  dialog { width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow: auto;
+    border: 1px solid var(--cizgi); border-radius: 12px; padding: 20px;
+    background: var(--kart); color: var(--yazi); }
+  dialog.genis { width: min(720px, calc(100% - 24px)); }
+  dialog::backdrop { background: rgba(0, 0, 0, .55); }
+  .pencere-ust { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .pencere-ust h2 { margin: 0; }
+  .taksit { margin-top: 16px; padding: 14px; border: 1px solid var(--cizgi); border-radius: 10px; }
+  .taksit h3 { margin: 0 0 10px; font-size: 1rem; }
+  .taksit-giris { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .taksit-sonuc { margin: 12px 0 0; font-size: 1.1rem; }
+  .taksit-sonuc strong { color: var(--vurgu); font-size: 1.4rem; }
+  .not { font-size: .8rem; color: var(--soluk); margin: 6px 0 0; }
+
+  /* Karşılaştırma tablosu */
+  .tablo-kap { overflow-x: auto; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; min-width: 420px; }
+  th, td { padding: 10px 8px; border-bottom: 1px solid var(--cizgi); text-align: left; }
+  th[scope="row"] { color: var(--soluk); font-weight: 400; }
+  thead th { font-size: 1.05rem; }
+  td.iyi { color: var(--vurgu); font-weight: 700; }
+
+  @media (max-width: 480px) { .arac-cubugu { position: static; } }
+</style>
+</head>
+<body>
+<div class="kapsayici">
+  <header>
+    <div>
+      <h1>Otomobil Galerisi</h1>
+      <p>Arayın, süzün, karşılaştırın; aramanızı bağlantıyla paylaşın.</p>
+    </div>
+    <button class="dugme" id="temaDugme" type="button" aria-pressed="false">Koyu tema</button>
+  </header>
+
+  <div class="arac-cubugu">
+    <div class="alan">
+      <label for="arama">Marka veya model ara</label>
+      <input id="arama" type="search" placeholder="Örn. Volkswagen, Corolla" autocomplete="off">
+    </div>
+    <div class="alan">
+      <label for="marka">Marka</label>
+      <select id="marka"><option value="">Tüm markalar</option></select>
+    </div>
+    <div class="alan">
+      <label for="yakit">Yakıt</label>
+      <select id="yakit"><option value="">Tüm yakıt türleri</option></select>
+    </div>
+    <div class="alan">
+      <label for="fiyatSiniri">En fazla fiyat: <strong id="fiyatEtiket"></strong></label>
+      <input id="fiyatSiniri" type="range" step="10000">
+    </div>
+    <div class="alan">
+      <label for="siralama">Sırala</label>
+      <select id="siralama">
+        <option value="">Varsayılan sıralama</option>
+        <option value="fiyat-artan">Artan Fiyata Göre</option>
+        <option value="fiyat-azalan">Azalan Fiyata Göre</option>
+        <option value="km-artan">Artan Kilometre</option>
+        <option value="km-azalan">Azalan Kilometre</option>
+        <option value="yil-azalan">Yeniden Eskiye (Yıl)</option>
+      </select>
+    </div>
+    <div class="alan">
+      <span class="satir" style="margin-top:auto">
+        <label class="satir"><input type="checkbox" id="sadeceFavori"> Sadece favoriler</label>
+        <button class="dugme" id="sifirla" type="button">Filtreleri sıfırla</button>
+        <button class="dugme" id="baglanti" type="button">Bağlantıyı kopyala</button>
+      </span>
+    </div>
+  </div>
+
+  <p class="sonuc-sayisi" id="sonucSayisi" aria-live="polite"></p>
+  <main class="izgara" id="izgara"></main>
+  <p class="bos" id="bos" hidden>Sonuç bulunamadı. Filtreleri sıfırlayıp tekrar deneyin.</p>
+  <nav class="sayfalama" id="sayfalama" aria-label="Sayfalar"></nav>
+</div>
+
+<!-- Karşılaştırma çubuğu -->
+<div class="karsilastirma-cubugu" id="kCubuk" hidden>
+  <p id="kMetin" aria-live="polite"></p>
+  <button class="dugme" id="kAc" type="button" disabled>Karşılaştır</button>
+  <button class="dugme" id="kTemizle" type="button">Seçimi temizle</button>
+</div>
+
+<!-- Araç detay penceresi -->
+<dialog id="pencere" aria-labelledby="pencereBaslik">
+  <div class="pencere-ust">
+    <h2 id="pencereBaslik"></h2>
+    <button class="dugme" data-kapat type="button">Kapat</button>
+  </div>
+  <div class="gorsel" id="pencereGorsel"></div>
+  <dl id="pencereOzellik"></dl>
+  <p class="fiyat" id="pencereFiyat"></p>
+  <section class="taksit" aria-label="Taksit hesaplayıcı">
+    <h3>Taksit hesaplayıcı</h3>
+    <div class="taksit-giris">
+      <div class="alan"><label for="pesinat">Peşinat</label>
+        <select id="pesinat"><option value="0">%0</option><option value="20" selected>%20</option>
+          <option value="30">%30</option><option value="40">%40</option><option value="50">%50</option></select></div>
+      <div class="alan"><label for="vade">Vade</label>
+        <select id="vade"><option value="12">12 ay</option><option value="24">24 ay</option>
+          <option value="36" selected>36 ay</option><option value="48">48 ay</option></select></div>
+      <div class="alan"><label for="faiz">Aylık faiz (%)</label>
+        <input id="faiz" type="number" min="0" max="10" step="0.05" value="3.5"></div>
+    </div>
+    <p class="taksit-sonuc">Aylık taksit: <strong id="aylik"></strong></p>
+    <p class="taksit-sonuc" style="font-size:.95rem">Toplam geri ödeme: <span id="toplam"></span></p>
+    <p class="not">Bu tutarlar yalnızca tahminidir; masraf ve vergileri içermez.</p>
+  </section>
+</dialog>
+
+<!-- Karşılaştırma penceresi -->
+<dialog id="kPencere" class="genis" aria-labelledby="kBaslik">
+  <div class="pencere-ust">
+    <h2 id="kBaslik">Araç karşılaştırma</h2>
+    <button class="dugme" data-kapat type="button">Kapat</button>
+  </div>
+  <div class="tablo-kap"><table id="kTablo"></table></div>
+  <p class="not">Mavi ve kalın değerler, o satırda daha avantajlı olanı gösterir.</p>
+</dialog>
+
+<script>
+  /* Araç verileri. "foto" alanına kendi fotoğraf adresinizi veya dosya yolunuzu
+     yazabilirsiniz (ör. "img/golf.jpg"). Boş bırakılırsa ya da dosya açılmazsa
+     çizim görünür. */
+  const arabalar = [
+    { id: 1,  marka: "Volkswagen", model: "Golf",    yil: 2019, km: 78000,  fiyat: 785000,  yakit: "Benzin", vites: "Otomatik", renk: "#8a9aa8", renkAdi: "Gri",        foto: "" },
+    { id: 2,  marka: "Renault",    model: "Clio",    yil: 2021, km: 42000,  fiyat: 690000,  yakit: "Benzin", vites: "Manuel",   renk: "#c0392b", renkAdi: "Kırmızı",    foto: "" },
+    { id: 3,  marka: "Toyota",     model: "Corolla", yil: 2020, km: 55000,  fiyat: 950000,  yakit: "Hibrit", vites: "Otomatik", renk: "#e8e8e8", renkAdi: "Beyaz",      foto: "" },
+    { id: 4,  marka: "Fiat",       model: "Egea",    yil: 2018, km: 112000, fiyat: 540000,  yakit: "Dizel",  vites: "Manuel",   renk: "#2d4f7c", renkAdi: "Mavi",       foto: "" },
+    { id: 5,  marka: "Honda",      model: "Civic",   yil: 2022, km: 23000,  fiyat: 1350000, yakit: "Benzin", vites: "Otomatik", renk: "#2f3a45", renkAdi: "Antrasit",   foto: "" },
+    { id: 6,  marka: "BMW",        model: "320i",    yil: 2017, km: 134000, fiyat: 1150000, yakit: "Benzin", vites: "Otomatik", renk: "#1c1f24", renkAdi: "Siyah",      foto: "" },
+    { id: 7,  marka: "Hyundai",    model: "i20",     yil: 2023, km: 12000,  fiyat: 880000,  yakit: "Benzin", vites: "Otomatik", renk: "#d98e1f", renkAdi: "Turuncu",    foto: "" },
+    { id: 8,  marka: "Ford",       model: "Focus",   yil: 2016, km: 165000, fiyat: 420000,  yakit: "Dizel",  vites: "Manuel",   renk: "#4b7f52", renkAdi: "Yeşil",      foto: "" },
+    { id: 9,  marka: "Mercedes",   model: "C 180",   yil: 2019, km: 91000,  fiyat: 1680000, yakit: "Benzin", vites: "Otomatik", renk: "#a7adb3", renkAdi: "Gümüş",      foto: "" },
+    { id: 10, marka: "Dacia",      model: "Duster",  yil: 2021, km: 61000,  fiyat: 820000,  yakit: "Dizel",  vites: "Manuel",   renk: "#7a5c3e", renkAdi: "Kahverengi", foto: "" }
+  ];
+
+  const SAYFA_BOYUTU = 6;
+  const $ = id => document.getElementById(id);
+  const sayi = n => n.toLocaleString("tr-TR");
+  const tl = n => sayi(Math.round(n)) + " ₺";
+  const trKucuk = s => s.toLocaleLowerCase("tr-TR");
+  const bul = id => arabalar.find(a => a.id === id);
+
+  // Tarayıcı belleği kapalı olsa bile sayfa çalışsın diye güvenli okuma/yazma
+  const depo = {
+    oku(k, v) { try { return JSON.parse(localStorage.getItem(k)) ?? v; } catch { return v; } },
+    yaz(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+
+  let favoriler = new Set(depo.oku("favoriler", []));
+  const secili = new Set(); // karşılaştırma için seçilen araçlar (en fazla 2)
+  let sayfa = 1;
+  let seciliArac = null;
+
+  // Araba çizimi (fotoğraf yoksa yedek olarak kullanılır)
+  function arabaCizimi(renk) {
+    return `<svg viewBox="0 0 220 100" role="img" aria-label="Araba çizimi">
+      <path d="M12 70 L22 52 Q26 46 34 44 L66 38 Q78 22 98 20 L136 20 Q152 22 164 38 L194 44 Q208 48 208 62 L208 70 Z" fill="${renk}"/>
+      <path d="M76 38 Q84 28 100 28 L132 28 Q144 30 152 38 Z" fill="#dfe8ef" opacity=".85"/>
+      <circle cx="56" cy="72" r="15" fill="#1a2530"/><circle cx="56" cy="72" r="6" fill="#c9d1d8"/>
+      <circle cx="164" cy="72" r="15" fill="#1a2530"/><circle cx="164" cy="72" r="6" fill="#c9d1d8"/></svg>`;
+  }
+  // Fotoğraf varsa onu, yoksa çizimi döndürür
+  const gorselHtml = a => a.foto
+    ? `<img src="${a.foto}" alt="${a.marka} ${a.model}" loading="lazy" data-id="${a.id}">`
+    : arabaCizimi(a.renk);
+  // Fotoğraf yüklenemezse çizime geri dön
+  document.addEventListener("error", e => {
+    const img = e.target;
+    if (img.tagName !== "IMG" || !img.dataset.id) return;
+    const kap = img.parentElement;
+    kap.classList.remove("foto-alani");
+    kap.innerHTML = arabaCizimi(bul(Number(img.dataset.id)).renk);
+  }, true);
+
+  // Filtre kutularını verilerden doldur
+  const tekil = alan => [...new Set(arabalar.map(a => a[alan]))].sort((a, b) => a.localeCompare(b, "tr"));
+  tekil("marka").forEach(m => $("marka").add(new Option(m, m)));
+  tekil("yakit").forEach(y => $("yakit").add(new Option(y, y)));
+
+  const enDusuk = Math.floor(Math.min(...arabalar.map(a => a.fiyat)) / 10000) * 10000;
+  const enYuksek = Math.ceil(Math.max(...arabalar.map(a => a.fiyat)) / 10000) * 10000;
+  Object.assign($("fiyatSiniri"), { min: enDusuk, max: enYuksek, value: enYuksek });
+
+  const siralayicilar = {
+    "fiyat-artan":  (a, b) => a.fiyat - b.fiyat,
+    "fiyat-azalan": (a, b) => b.fiyat - a.fiyat,
+    "km-artan":     (a, b) => a.km - b.km,
+    "km-azalan":    (a, b) => b.km - a.km,
+    "yil-azalan":   (a, b) => b.yil - a.yil
+  };
+
+  /* ---- Adres çubuğu (#) ile filtre paylaşımı ---- */
+  // Filtreleri adrese yazar; varsayılan değerler yazılmaz
+  function hashYaz() {
+    const p = new URLSearchParams();
+    if ($("arama").value.trim()) p.set("q", $("arama").value.trim());
+    if ($("marka").value) p.set("marka", $("marka").value);
+    if ($("yakit").value) p.set("yakit", $("yakit").value);
+    if (Number($("fiyatSiniri").value) < enYuksek) p.set("max", $("fiyatSiniri").value);
+    if ($("siralama").value) p.set("sirala", $("siralama").value);
+    if ($("sadeceFavori").checked) p.set("fav", "1");
+    if (sayfa > 1) p.set("sayfa", sayfa);
+    const h = p.toString();
+    try { history.replaceState(null, "", location.pathname + location.search + (h ? "#" + h : "")); } catch {}
+  }
+  // Adresteki değerleri kontrollere aktarır
+  function hashOku() {
+    const p = new URLSearchParams(location.hash.slice(1));
+    $("arama").value = p.get("q") || "";
+    $("marka").value = p.get("marka") || "";
+    $("yakit").value = p.get("yakit") || "";
+    const max = Number(p.get("max"));
+    $("fiyatSiniri").value = max >= enDusuk && max <= enYuksek ? max : enYuksek;
+    $("siralama").value = siralayicilar[p.get("sirala")] ? p.get("sirala") : "";
+    $("sadeceFavori").checked = p.get("fav") === "1";
+    sayfa = Math.max(1, parseInt(p.get("sayfa"), 10) || 1);
+  }
+
+  /* ---- Listeleme ---- */
+  function goster() {
+    const sorgu = trKucuk($("arama").value.trim());
+    const sinir = Number($("fiyatSiniri").value);
+    $("fiyatEtiket").textContent = tl(sinir);
+
+    const liste = arabalar.filter(a =>
+      trKucuk(`${a.marka} ${a.model}`).includes(sorgu) &&
+      (!$("marka").value || a.marka === $("marka").value) &&
+      (!$("yakit").value || a.yakit === $("yakit").value) &&
+      a.fiyat <= sinir &&
+      (!$("sadeceFavori").checked || favoriler.has(a.id))
+    );
+    if (siralayicilar[$("siralama").value]) liste.sort(siralayicilar[$("siralama").value]);
+
+    // Sayfalama
+    const toplamSayfa = Math.max(1, Math.ceil(liste.length / SAYFA_BOYUTU));
+    sayfa = Math.min(sayfa, toplamSayfa);
+    const gorunen = liste.slice((sayfa - 1) * SAYFA_BOYUTU, sayfa * SAYFA_BOYUTU);
+
+    $("izgara").innerHTML = gorunen.map(a => `
+      <article class="kart">
+        <button class="kalp" type="button" data-favori="${a.id}"
+          aria-pressed="${favoriler.has(a.id)}" aria-label="${a.marka} ${a.model} favori">${favoriler.has(a.id) ? "♥" : "♡"}</button>
+        <div class="gorsel ${a.foto ? "foto-alani" : ""}">${gorselHtml(a)}</div>
+        <div class="bilgi">
+          <h2>${a.marka} <span>${a.model}</span></h2>
+          <dl><dt>Yıl</dt><dd>${a.yil}</dd><dt>Kilometre</dt><dd>${sayi(a.km)} km</dd>
+              <dt>Yakıt</dt><dd>${a.yakit}</dd></dl>
+          <div class="fiyat">${tl(a.fiyat)}</div>
+          <div class="kart-alt">
+            <button class="dugme" type="button" data-detay="${a.id}">Detayları gör</button>
+            <label><input type="checkbox" data-karsilastir="${a.id}" ${secili.has(a.id) ? "checked" : ""}> Karşılaştır</label>
+          </div>
+        </div>
+      </article>`).join("");
+
+    // Sayfa düğmeleri
+    let dugmeler = "";
+    if (toplamSayfa > 1) {
+      dugmeler = `<button class="dugme" data-sayfa="${sayfa - 1}" ${sayfa === 1 ? "disabled" : ""}>Önceki</button>`;
+      for (let i = 1; i <= toplamSayfa; i++)
+        dugmeler += `<button class="dugme" data-sayfa="${i}" aria-label="Sayfa ${i}" ${i === sayfa ? 'aria-current="page"' : ""}>${i}</button>`;
+      dugmeler += `<button class="dugme" data-sayfa="${sayfa + 1}" ${sayfa === toplamSayfa ? "disabled" : ""}>Sonraki</button>`;
+    }
+    $("sayfalama").innerHTML = dugmeler;
+
+    $("bos").hidden = liste.length > 0;
+    $("sonucSayisi").textContent = `${arabalar.length} araçtan ${liste.length} tanesi listeleniyor` +
+      (toplamSayfa > 1 ? ` (sayfa ${sayfa}/${toplamSayfa})` : "");
+    hashYaz();
+  }
+
+  // Filtre değişince ilk sayfaya dön
+  function filtreDegisti() { sayfa = 1; goster(); }
+  ["arama", "fiyatSiniri"].forEach(id => $(id).addEventListener("input", filtreDegisti));
+  ["marka", "yakit", "siralama", "sadeceFavori"].forEach(id => $(id).addEventListener("change", filtreDegisti));
+  $("sifirla").addEventListener("click", () => { location.hash = ""; hashOku(); goster(); });
+  window.addEventListener("hashchange", () => { hashOku(); goster(); });
+
+  // Bağlantıyı kopyala (kopyalama engellenirse metin kutusunda göster)
+  $("baglanti").addEventListener("click", async () => {
+    const adres = location.href;
+    try {
+      await navigator.clipboard.writeText(adres);
+      $("sonucSayisi").textContent = "Bağlantı kopyalandı.";
+    } catch { window.prompt("Bağlantıyı kopyalayın:", adres); }
+  });
+
+  /* ---- Kart içi tıklamalar (favori, detay, sayfa) ---- */
+  $("izgara").addEventListener("click", e => {
+    const fav = e.target.closest("[data-favori]");
+    const det = e.target.closest("[data-detay]");
+    if (fav) {
+      const id = Number(fav.dataset.favori);
+      favoriler.has(id) ? favoriler.delete(id) : favoriler.add(id);
+      depo.yaz("favoriler", [...favoriler]);
+      goster();
+      $("izgara").querySelector(`[data-favori="${id}"]`)?.focus();
+    }
+    if (det) pencereAc(Number(det.dataset.detay));
+  });
+  $("sayfalama").addEventListener("click", e => {
+    const d = e.target.closest("[data-sayfa]");
+    if (!d) return;
+    sayfa = Number(d.dataset.sayfa);
+    goster();
+    $("izgara").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  /* ---- Karşılaştırma ---- */
+  function kCubukGuncelle(mesaj) {
+    const adlar = [...secili].map(id => { const a = bul(id); return `${a.marka} ${a.model}`; });
+    $("kCubuk").hidden = secili.size === 0;
+    $("kMetin").textContent = mesaj ||
+      (secili.size === 1 ? `${adlar[0]} seçildi. Bir araç daha seçin.` : `${adlar.join(" ve ")} seçildi.`);
+    $("kAc").disabled = secili.size !== 2;
+  }
+  $("izgara").addEventListener("change", e => {
+    const k = e.target.closest("[data-karsilastir]");
+    if (!k) return;
+    const id = Number(k.dataset.karsilastir);
+    if (k.checked && secili.size >= 2) {
+      k.checked = false;
+      kCubukGuncelle("En fazla 2 araç seçebilirsiniz.");
+      return;
+    }
+    k.checked ? secili.add(id) : secili.delete(id);
+    kCubukGuncelle();
+  });
+  $("kTemizle").addEventListener("click", () => { secili.clear(); kCubukGuncelle(); goster(); });
+  $("kAc").addEventListener("click", () => {
+    const [a, b] = [...secili].map(bul);
+    // Satır oluşturur; "iyi" ölçütüne göre avantajlı hücreyi işaretler
+    const satir = (ad, deger, tip) => {
+      const x = deger(a), y = deger(b);
+      const ham = tip ? [tip(a), tip(b)] : null; // tip: karşılaştırılacak sayı
+      let iyiA = false, iyiB = false;
+      if (ham && ham[0] !== ham[1]) { iyiA = ham[0] < ham[1]; iyiB = !iyiA; }
+      return `<tr><th scope="row">${ad}</th><td class="${iyiA ? "iyi" : ""}">${x}</td><td class="${iyiB ? "iyi" : ""}">${y}</td></tr>`;
+    };
+    $("kTablo").innerHTML = `
+      <thead><tr><td></td><th scope="col">${a.marka} ${a.model}</th><th scope="col">${b.marka} ${b.model}</th></tr></thead>
+      <tbody>
+        ${satir("Fiyat", v => tl(v.fiyat), v => v.fiyat)}
+        ${satir("Model yılı", v => v.yil, v => -v.yil)}
+        ${satir("Kilometre", v => sayi(v.km) + " km", v => v.km)}
+        ${satir("Yakıt", v => v.yakit)}
+        ${satir("Vites", v => v.vites)}
+        ${satir("Renk", v => v.renkAdi)}
+      </tbody>`;
+    $("kPencere").showModal();
+  });
+
+  /* ---- Detay penceresi ve taksit ---- */
+  function pencereAc(id) {
+    const a = seciliArac = bul(id);
+    $("pencereBaslik").textContent = `${a.marka} ${a.model}`;
+    $("pencereGorsel").className = "gorsel" + (a.foto ? " foto-alani" : "");
+    $("pencereGorsel").innerHTML = gorselHtml(a);
+    $("pencereOzellik").innerHTML = `
+      <dt>Model yılı</dt><dd>${a.yil}</dd><dt>Kilometre</dt><dd>${sayi(a.km)} km</dd>
+      <dt>Yakıt</dt><dd>${a.yakit}</dd><dt>Vites</dt><dd>${a.vites}</dd><dt>Renk</dt><dd>${a.renkAdi}</dd>`;
+    $("pencereFiyat").textContent = tl(a.fiyat);
+    taksitHesapla();
+    $("pencere").showModal();
+  }
+  // Tüm pencerelerde "Kapat" düğmesi ve dış tıklama
+  document.querySelectorAll("dialog").forEach(d => {
+    d.addEventListener("click", e => { if (e.target === d || e.target.hasAttribute("data-kapat")) d.close(); });
+  });
+
+  // Taksit: eşit taksitli kredi formülü
+  function taksitHesapla() {
+    if (!seciliArac) return;
+    const pesin = seciliArac.fiyat * Number($("pesinat").value) / 100;
+    const anapara = seciliArac.fiyat - pesin;
+    const n = Number($("vade").value);
+    const r = Math.max(0, Number($("faiz").value) || 0) / 100;
+    const taksit = r === 0 ? anapara / n : anapara * r / (1 - Math.pow(1 + r, -n));
+    $("aylik").textContent = tl(taksit);
+    $("toplam").textContent = tl(taksit * n + pesin);
+  }
+  ["pesinat", "vade", "faiz"].forEach(id => $(id).addEventListener("input", taksitHesapla));
+
+  /* ---- Tema ---- */
+  function temaUygula(koyu) {
+    document.documentElement.dataset.tema = koyu ? "koyu" : "acik";
+    $("temaDugme").setAttribute("aria-pressed", koyu);
+    $("temaDugme").textContent = koyu ? "Açık tema" : "Koyu tema";
+  }
+  const kayitliTema = depo.oku("tema", null);
+  temaUygula(kayitliTema ? kayitliTema === "koyu" : matchMedia("(prefers-color-scheme: dark)").matches);
+  $("temaDugme").addEventListener("click", () => {
+    const koyu = document.documentElement.dataset.tema !== "koyu";
+    temaUygula(koyu);
+    depo.yaz("tema", koyu ? "koyu" : "acik");
+  });
+
+  hashOku(); // sayfa açılırken adresteki filtreleri uygula
+  goster();
+</script>
+</body>
+</html>
